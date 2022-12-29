@@ -9,6 +9,7 @@ using DemoApplication.Services.Abstracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using System.Net;
 using System.Text.Json;
 using BC = BCrypt.Net.BCrypt;
@@ -40,7 +41,7 @@ namespace DemoApplication.Areas.Admin.Controllers
         public ActionResult List()
         {
             var model = _dbContext.Users
-                .Select(u => new UserViewModel(u.Email, u.FirstName, u.LastName, u.CreatedAt, u.UpdatedAt, u.Role.Name))
+                .Select(u => new UserViewModel(u.Id, u.Email, u.FirstName, u.LastName, u.CreatedAt, u.UpdatedAt, u.Role.Name))
                 .ToList();
 
             return View(model);
@@ -74,6 +75,7 @@ namespace DemoApplication.Areas.Admin.Controllers
             }
 
             var user = await CreateUserAsync();
+            var basket = await CreateBasketAsync();
 
 
             async Task<Database.Models.User> CreateUserAsync()
@@ -94,49 +96,90 @@ namespace DemoApplication.Areas.Admin.Controllers
             }
 
             //Create basket process
-            var basket = new Database.Models.Basket
+            async Task<Database.Models.Basket> CreateBasketAsync()
             {
-                User = user,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now,
-            };
-            await _dbContext.Baskets.AddAsync(basket);
-            await CreteBasketProductsAsync();
-
-
-
-            async Task CreteBasketProductsAsync()
-        {
-            //Add products to basket if cookie exists
-            var productCookieValue = _httpContextAccessor.HttpContext!.Request.Cookies["products"];
-            if (productCookieValue is not null)
-            {
-                var productsCookieViewModel = JsonSerializer.Deserialize<List<ProductCookieViewModel>>(productCookieValue);
-                foreach (var productCookieViewModel in productsCookieViewModel)
+                //Create basket process
+                var basket = new Database.Models.Basket
                 {
-                    var book = await _dbContext.Books.FirstOrDefaultAsync(b => b.Id == productCookieViewModel.Id);
-                    var basketProduct = new Database.Models.BasketProduct
-                    {
-                        Basket = basket,
-                        BookId = book!.Id,
-                        Quantity = productCookieViewModel.Quantity,
-                        CreatedAt = DateTime.Now,
-                        UpdatedAt = DateTime.Now
-                    };
+                    User = user,
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now,
+                };
+                await _dbContext.Baskets.AddAsync(basket);
 
-                    await _dbContext.BasketProducts.AddAsync(basketProduct);
-                }
+                return basket;
             }
+
+
+
+            await _dbContext.SaveChangesAsync();
+
+
+            return RedirectToRoute("admin-user-list");
         }
 
+        #endregion
 
 
-        await _dbContext.SaveChangesAsync();
+
+        [HttpGet("update/{id}", Name = "admin-user-update")]
+        public async Task<IActionResult> UpdateAsync([FromRoute] Guid id)
+        {
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id);
+            if (user is null)
+            {
+                return NotFound();
+            }
+         
+
+            var model = new UpdateViewModel
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+               
+                RoleId = user.RoleId,
+                RoleListItemViewModels = await _dbContext.Roles.Select(r => new RoleListItemViewModel
+                {
+                    Id = r.Id,
+                    Name = r.Name
+                }).ToListAsync(),
+                UpdatedAt = DateTime.Now,
+
+            };
+
+            return View(model);
+        }
+
+        [HttpPost("update/{id}", Name = "admin-user-update")]
+        public async Task<IActionResult> UpdateAsync([FromRoute] Guid id, [FromForm] UpdateViewModel model)
+        {
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id);
+
+            if (user is null)
+            {
+                return NotFound();
+            }
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
 
 
-			return RedirectToRoute("admin-user-list");
+
+            user.Email = model.Email;
+            user.FirstName = model.FirstName;
+            user.LastName = model.LastName;
+            user.RoleId = model.RoleId;
+            user.UpdatedAt = DateTime.Now;
+
+            await _dbContext.SaveChangesAsync();
+           
+
+          
+
+            return RedirectToRoute("admin-user-list",model);
+        }
     }
-
-    #endregion
-}
 }

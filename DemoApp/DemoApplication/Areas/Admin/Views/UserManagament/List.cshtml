@@ -39,9 +39,10 @@
                                 <td>@user.CreatedAt.ToString("dd/MM/yyyy")</td>
                                 <td>@user.UpdatedAt.ToString("dd/MM/yyyy")</td>
                                 <td>@user.Role</td>
-                                
-                            
-                                
+                                <td>
+                                    <a asp-route="admin-user-update" asp-route-id="@user.Id"><i class="las la-pen text-secondary font-16"></i></a>
+                                </td>
+
                             </tr>
                         }
                     </tbody>

@@ -5,8 +5,8 @@ namespace DemoApplication.Areas.Admin.ViewModels.UserManagament
 {
 	public class UserViewModel
 	{
-	
 
+		public Guid Id { get; set; }
 		public string? Email { get; set; }
 		public string? FirstName { get; set; }
 		public string? LastName { get; set; }
@@ -19,8 +19,10 @@ namespace DemoApplication.Areas.Admin.ViewModels.UserManagament
 
 	
 
-		public UserViewModel(string? email, string? firstName, string? lastName, DateTime createdAt, DateTime updatedAt, string role)
+		public UserViewModel(Guid id, string? email, string? firstName, string? lastName, DateTime createdAt, DateTime updatedAt, string role)
+
 		{
+			Id = id;
 			Email = email;
 			FirstName = firstName;
 			LastName = lastName;
